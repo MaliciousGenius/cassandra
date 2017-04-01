@@ -1,0 +1,13 @@
+---
+
+- name: install cassandra 
+  hosts: cassandra
+  gather_facts: true
+  user: root
+  roles:
+    - prepare
+    - cassandra
+
+  vars:
+      - {cluster_name: CassCL}
+

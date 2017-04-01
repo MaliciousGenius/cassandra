@@ -1,0 +1,53 @@
+---
+
+- name: get oracle jre8 
+  copy: src=jre-8u121-linux-x64.tar.gz dest=/tmp 
+
+- file: dest=/opt/ state=directory owner=root group=root mode=0755
+
+- unarchive: src=jre-8u121-linux-x64.tar.gz dest=/opt
+
+- file: state=link src=/opt/jre1.8.0_121/ dest=/opt/java
+
+- name: get and setup cassandra
+  unarchive: src='http://apache-mirror.rbc.ru/pub/apache/cassandra/3.10/apache-cassandra-3.10-bin.tar.gz' dest=/opt remote_src=yes
+
+-  file: state=link src=/opt/apache-cassandra-3.10 dest=/opt/cassandra
+
+- name: setup cassandra
+  user: name=cassandra system=yes
+
+- file: state=directory mode=0755 owner=cassandra dest=/opt/cassandra/{{ item }}
+  with_items: 
+    - logs
+    - data
+    - run
+
+- template: dest=/opt/cassandra/conf/cassandra.yaml backup=true force=yes owner=root group=root mode=0644 src=cassandra.j2
+- copy: src=cassandra.conf dest=/etc/init/cassandra.conf owner=root group=root mode=0644
+- service: name=cassandra state=restarted
+
+
+- name: iptables cassandra public rule
+  iptables: action=append chain=INPUT protocol=tcp destination_port=9042 state=present jump=ACCEPT
+
+- name: iptable cassandra private rule 
+  iptables: action=append chain=INPUT protocol=tcp destination_port=7000 source="{{ item }}" state=present jump=ACCEPT
+  with_items:
+    - "{{ groups.cassandra }}"
+
+- name: save iptables
+  shell: iptables-save > /etc/iptables/rules.v4
+
+- name: add cassandra path to root
+  lineinfile: state=present line='if [ -d /opt/cassandra/bin ]; then export PATH=/opt/cassandra/bin:$PATH; fi' dest=/root/.bashrc
+- lineinfile: state=present line='if [ -d /opt/java ]; then export JAVA_HOME=/opt/java; fi' dest=/root/.bashrc
+
+- name: wait to start cassandra
+  pause: seconds=30
+
+- name: check state
+  shell: JAVA_HOME=/opt/java /opt/cassandra/bin/nodetool status
+  register: nodetool_result
+
+- debug: msg={{ nodetool_result }}

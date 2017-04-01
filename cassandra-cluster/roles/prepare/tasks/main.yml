@@ -1,0 +1,36 @@
+---
+
+- fail: msg="Playbook for ubuntu 14 only"
+  when: 
+    - ansible_distribution != "Ubuntu"
+    - ansible_distribution_major_version != "14"
+  
+- name: udpate os
+  apt: upgrade=yes update_cache=yes
+
+- name: some packages
+  apt: name={{ item }} state=latest
+  with_items: 
+    - iptables
+    - iptables-persistent
+    - tar
+    - gzip
+
+- name: iptable states
+  iptables: chain=INPUT ctstate=ESTABLISHED,RELATED jump=ACCEPT
+
+- name: iptables lo
+  iptables: chain=INPUT in_interface=lo jump=ACCEPT
+
+- name: iptables ssh
+  iptables: action=append chain=INPUT protocol=tcp destination_port=22 state=present jump=ACCEPT
+
+- name: iptables icmp
+  iptables: action=append chain=INPUT protocol=icmp state=present jump=ACCEPT
+
+- name: iptables input policy
+  iptables: policy=DROP chain=INPUT state=present
+
+- name: save iptables settings
+  shell: iptables-save > /etc/iptables/rules.v4
+
