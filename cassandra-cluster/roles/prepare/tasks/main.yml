@@ -5,7 +5,7 @@
     - ansible_distribution != "Ubuntu"
     - ansible_distribution_major_version != "14"
   
-- name: udpate os
+- name: update os
   apt: upgrade=yes update_cache=yes
 
 - name: some packages
